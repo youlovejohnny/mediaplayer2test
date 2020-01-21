@@ -1,10 +1,11 @@
 package com.megastar.firebasetest
 
 import android.content.*
-import android.media.AudioManager
+import android.net.Uri
 import android.os.Bundle
 import android.support.v4.media.session.PlaybackStateCompat
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.media2.common.MediaItem
 import androidx.media2.common.MediaMetadata
 import androidx.media2.common.SessionPlayer
@@ -35,7 +36,7 @@ class PlayerActivity : AppCompatActivity(R.layout.activity_player) {
         mediaBrowser = MediaBrowser.Builder(this)
             .setSessionToken(sessionToken)
             .setControllerCallback(
-               Executor()
+               ContextCompat.getMainExecutor(this)
             ,connectionCallback)
             .build()
 
@@ -45,19 +46,6 @@ class PlayerActivity : AppCompatActivity(R.layout.activity_player) {
 
         SelectedSong(this@PlayerActivity).selectedSongUrl = uri
 
-        val ids = mutableListOf<String>()
-        ids.add("1")
-        mediaController.setPlaylist(ids,MediaMetadata.Builder().
-            build())
-
-
-
-    }
-
-
-    public override fun onResume() {
-        super.onResume()
-        volumeControlStream = AudioManager.STREAM_MUSIC
     }
 
     inner class MyConnectionCallback : MediaBrowser.BrowserCallback() {
@@ -70,7 +58,7 @@ class PlayerActivity : AppCompatActivity(R.layout.activity_player) {
             allowedCommands: SessionCommandGroup
         ) {
             super.onConnected(controller, allowedCommands)
-            mediaController = MediaController.Builder(this@PlayerActivity).setSessionToken(sessionToken).build()
+            this@PlayerActivity.mediaController = controller
             buildTransportControls()
         }
 
@@ -83,6 +71,20 @@ class PlayerActivity : AppCompatActivity(R.layout.activity_player) {
             super.onCurrentMediaItemChanged(controller, item)
         }
 
+        override fun onPlaylistChanged(
+            controller: MediaController,
+            list: MutableList<MediaItem>?,
+            metadata: MediaMetadata?
+        ) {
+            super.onPlaylistChanged(controller, list, metadata)
+        }
+
+        override fun onPlaylistMetadataChanged(
+            controller: MediaController,
+            metadata: MediaMetadata?
+        ) {
+            super.onPlaylistMetadataChanged(controller, metadata)
+        }
 }
 
     fun buildTransportControls() {
@@ -93,7 +95,9 @@ class PlayerActivity : AppCompatActivity(R.layout.activity_player) {
                     mediaController.pause()
                 }
                 PlaybackStateCompat.STATE_NONE-> {
-                    mediaController.play()
+                    mediaController.playFromUri(Uri.parse(""),Bundle.EMPTY)
+//                    mediaController.playFromUri(Uri.parse("https://pv-music.com/public/download.php?id=186846466_456240555_770_1e74dd4b916d988916_1e74dd4b916d988916&hash=50bce919711ae0a24a622449020b0e84840831bc5052d3d48ca2d388993b7d51"),
+//                        Bundle.EMPTY)
                 }
             }
         }

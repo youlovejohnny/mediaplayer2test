@@ -2,114 +2,130 @@ package com.megastar.firebasetest
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.graphics.Color
-import android.media.AudioAttributes
-import android.media.MediaDescription
-import android.media.MediaMetadata
-import android.media.browse.MediaBrowser
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
-import android.support.v4.media.MediaBrowserCompat
-import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.PlaybackStateCompat
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
-import androidx.media.MediaBrowserServiceCompat
 import androidx.media.session.MediaButtonReceiver
 import androidx.media2.common.MediaItem
+import androidx.media2.common.MediaMetadata
+import androidx.media2.common.MediaMetadata.METADATA_KEY_MEDIA_URI
+import androidx.media2.common.MediaMetadata.METADATA_KEY_TITLE
 import androidx.media2.player.MediaPlayer
+import androidx.media2.session.MediaSession
+import androidx.media2.session.MediaSessionService
+import androidx.media2.session.SessionCommandGroup
+import java.util.*
 
 
-class MediaPlaybackService : MediaBrowserServiceCompat() {
+class MediaPlaybackService : MediaSessionService() {
 
-    //    provides the ability for a client to build and display a menu of the MediaBrowserService's content hierarchy
-    override fun onLoadChildren(
-        parentId: String,
-        result: Result<MutableList<MediaBrowserCompat.MediaItem>>
-    ) {
-        result.sendResult(null)
-    }
 
-    override fun onGetRoot(
-        clientPackageName: String,
-        clientUid: Int,
-        rootHints: Bundle?
-    ): BrowserRoot? {
-        return BrowserRoot(getString(R.string.app_name), null)
+    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? {
+        this.controllerInfo = controllerInfo
+        return mediaSession
     }
 
 
     private val LOG_TAG = "MediaPlaybackService"
-    private var mediaSession: MediaSessionCompat? = null
+    private var mediaSession: MediaSession? = null
     private lateinit var stateBuilder: PlaybackStateCompat.Builder
     private lateinit var mediaPlayer: MediaPlayer
+    private lateinit var controllerInfo: MediaSession.ControllerInfo
 
     override fun onCreate() {
         super.onCreate()
         Log.d(LOG_TAG, " Service created ")
-        // Create a MediaSessionCompat
-        mediaSession = MediaSessionCompat(baseContext, LOG_TAG).apply {
+        mediaPlayer = MediaPlayer(this@MediaPlaybackService).apply {
 
 
-            // Set an initial PlaybackState with ACTION_PLAY, so media buttons can start the player
-            stateBuilder = PlaybackStateCompat.Builder()
-                .setActions(PlaybackStateCompat.ACTION_PLAY_PAUSE
-                )
+                        val list = mutableListOf<MediaItem>()
+            list.add(MediaItem.Builder()
+                .setMetadata(
+                    MediaMetadata.Builder()
+                        .putText(METADATA_KEY_TITLE,"Мандаринка")
+                        .putText(METADATA_KEY_MEDIA_URI,"https://pv-music.com/public/download.php?id=186846466_456240555_770_1e74dd4b916d988916_1e74dd4b916d988916&hash=50bce919711ae0a24a622449020b0e84840831bc5052d3d48ca2d388993b7d51").build()).build())
 
-            setPlaybackState(stateBuilder.build())
-
-            // MySessionCallback() has methods that handle callbacks from a media controller
-            setCallback(SessionServiceCallback())
-
-            // Set the session's token so that client activities can communicate with it.
-            setSessionToken(sessionToken)
-
-            mediaPlayer = MediaPlayer(this@MediaPlaybackService).apply {
-
-//                setPlaylist()
-
-                prepare()
-            }
+            setPlaylist(list,MediaMetadata.Builder().putText(METADATA_KEY_TITLE,"Топ плейлист").build())
 
 
         }
+
+
+        mediaSession = MediaSession.Builder(this, mediaPlayer)
+            .setSessionActivity(
+                PendingIntent.getActivity(
+                    this,
+                    0,
+                    Intent(this, PlayerActivity::class.java),
+                    0
+                )
+            )
+            .setId(Random().nextInt().toString())
+            .setSessionCallback(ContextCompat.getMainExecutor(this), callback)
+            .build()
     }
 
-    inner class SessionServiceCallback: MediaSessionCompat.Callback() {
-        override fun onMediaButtonEvent(mediaButtonEvent: Intent?): Boolean {
+    val callback = object : MediaSession.SessionCallback() {
 
-            return super.onMediaButtonEvent(mediaButtonEvent)
+        override fun onConnect(
+            session: MediaSession,
+            controller: MediaSession.ControllerInfo
+        ): SessionCommandGroup? {
+            return super.onConnect(session, controller)
         }
 
-        override fun onPlay() {
-            mediaSession?.setPlaybackState(PlaybackStateCompat.Builder().setState(PlaybackStateCompat.STATE_PLAYING,0,1f).build())
-            mediaSession?.isActive  = true
-            mediaPlayer.play()
-            runNotification()
+        override fun onDisconnected(
+            session: MediaSession,
+            controller: MediaSession.ControllerInfo
+        ) {
+            super.onDisconnected(session, controller)
         }
 
-        override fun onPause() {
-            mediaSession?.setPlaybackState(PlaybackStateCompat.Builder().setState(PlaybackStateCompat.STATE_PAUSED,0,1f).build())
-            mediaPlayer.pause()
-            stopForeground(false)
-            runNotification(false)
+        override fun onPlayFromUri(
+            session: MediaSession,
+            controller: MediaSession.ControllerInfo,
+            uri: Uri,
+            extras: Bundle?
+        ): Int {
+            return super.onPlayFromUri(session, controller, uri, extras)
         }
+//
+//        override fun onPlay() {
+//            mediaSession?.setPlaybackState(PlaybackStateCompat.Builder().setState(PlaybackStateCompat.STATE_PLAYING,0,1f).build())
+//            mediaSession?.isActive  = true
+//            mediaPlayer.play()
+//
+//            runNotification()
+//        }
+//
+//        override fun onPause() {
+//            mediaSession?.setPlaybackState(PlaybackStateCompat.Builder().setState(PlaybackStateCompat.STATE_PAUSED,0,1f).build())
+//            mediaPlayer.pause()
+//            stopForeground(false)
+//            runNotification(false)
+//        }
+//
+//        override fun onStop() {
+//            mediaSession?.setPlaybackState(PlaybackStateCompat.Builder().setState(PlaybackStateCompat.STATE_STOPPED,0,1f).build())
+//            mediaPlayer.pause()
+//        }
+//
 
-        override fun onStop() {
-            mediaSession?.setPlaybackState(PlaybackStateCompat.Builder().setState(PlaybackStateCompat.STATE_STOPPED,0,1f).build())
-            mediaPlayer.pause()
-        }
 
     }
 
 
     private fun runNotification(foreground: Boolean = true) {
-        val controller = mediaSession!!.controller
-        val mediaMetadata = controller!!.metadata
-//        val description = mediaMetadata!!.description
+        val controller = mediaSession!!.connectedControllers[0]
+//        val mediaMetadata = controller!!.metadata
 
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -134,7 +150,7 @@ class MediaPlaybackService : MediaBrowserServiceCompat() {
 //            setLargeIcon(description.iconBitmap)
 
             // Enable launching the player by clicking the notification
-            setContentIntent(controller.sessionActivity)
+//            setContentIntent(controller.sessionActivity)
 
             setChannelId("my_channel")
             // Stop the service when the notification is swiped away
@@ -201,21 +217,21 @@ class MediaPlaybackService : MediaBrowserServiceCompat() {
                 )
             )
             // Take advantage of MediaStyle features
-            setStyle(
-                androidx.media.app.NotificationCompat.MediaStyle()
-                .setMediaSession(mediaSession?.sessionToken)
-                .setShowActionsInCompactView(0,1,2)
-
-                // Add a cancel button
-                .setShowCancelButton(true)
-                .setCancelButtonIntent(
-                    MediaButtonReceiver.buildMediaButtonPendingIntent(
-                        this@MediaPlaybackService,
-                        PlaybackStateCompat.ACTION_STOP
-                    )
-                )
-
-            )
+//            setStyle(
+//                androidx.media.app.NotificationCompat.MediaStyle()
+//                .setMediaSession(mediaSession?.token)
+//                .setShowActionsInCompactView(0,1,2)
+//
+//                // Add a cancel button
+//                .setShowCancelButton(true)
+//                .setCancelButtonIntent(
+//                    MediaButtonReceiver.buildMediaButtonPendingIntent(
+//                        this@MediaPlaybackService,
+//                        PlaybackStateCompat.ACTION_STOP
+//                    )
+//                )
+//
+//            )
         }
 
         if (foreground) {
@@ -233,17 +249,18 @@ class MediaPlaybackService : MediaBrowserServiceCompat() {
     intent?.let {
         when {
             KeyEventHelper.isPlayEvent(intent) -> {
-                mediaPlayer.play()
-                mediaSession?.setPlaybackState(PlaybackStateCompat.Builder().setState(PlaybackStateCompat.STATE_PLAYING,0,1f).build())
-                runNotification()
+                mediaPlayer.play().addListener(Runnable { Log.d(LOG_TAG,"PLAY") },ContextCompat.getMainExecutor(this))
+
+//                mediaSession?.setPlaybackState(PlaybackStateCompat.Builder().setState(PlaybackStateCompat.STATE_PLAYING,0,1f).build())
+//                runNotification()
                 ContextCompat.startForegroundService(this, Intent(applicationContext, this.javaClass))
             }
 
             KeyEventHelper.isPauseEvent(intent) -> {
                 mediaPlayer.pause()
-                mediaSession?.setPlaybackState(PlaybackStateCompat.Builder().setState(PlaybackStateCompat.STATE_PAUSED,0,1f).build())
+//                mediaSession?.setPlaybackState(PlaybackStateCompat.Builder().setState(PlaybackStateCompat.STATE_PAUSED,0,1f).build())
                 stopForeground(false)
-                runNotification(false)
+//                runNotification(false)
                 stopSelf()
             }
             else -> {
@@ -253,7 +270,12 @@ class MediaPlaybackService : MediaBrowserServiceCompat() {
     }
 
 
+
         return super.onStartCommand(intent, flags, startId)
+    }
+
+    override fun onUpdateNotification(session: MediaSession): MediaNotification? {
+        return super.onUpdateNotification(session)
     }
 
 }

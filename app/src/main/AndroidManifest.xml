@@ -28,7 +28,7 @@
 
         <service android:name=".MediaPlaybackService">
             <intent-filter>
-                <action android:name="android.media.browse.MediaBrowserService" />
+                <action android:name="androidx.media2.session.MediaSessionService" />
                     <action android:name="android.intent.action.MEDIA_BUTTON" />
             </intent-filter>
         </service>
