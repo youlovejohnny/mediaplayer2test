@@ -16,6 +16,9 @@ object KeyEventHelper {
         return isEvent(intent, KeyEvent.KEYCODE_MEDIA_STOP)
     }
 
+    fun isNextEvent(intent: Intent): Boolean {
+        return isEvent(intent,KeyEvent.KEYCODE_MEDIA_NEXT)
+    }
 
     private fun isEvent(intent: Intent, keyEvent: Int): Boolean {
         return intent.getParcelableExtra<KeyEvent>(Intent.EXTRA_KEY_EVENT)?.keyCode == KeyEvent(

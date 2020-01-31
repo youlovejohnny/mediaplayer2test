@@ -1,10 +1,16 @@
 package com.megastar.firebasetest
 
-import android.content.*
+import android.annotation.SuppressLint
+import android.content.ComponentName
+import android.content.Context
 import android.media.AudioManager
+import android.net.Uri
 import android.os.Bundle
+import android.provider.MediaStore
 import android.support.v4.media.session.PlaybackStateCompat
+import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.media2.common.MediaItem
 import androidx.media2.common.MediaMetadata
 import androidx.media2.common.SessionPlayer
@@ -14,16 +20,15 @@ import androidx.media2.session.SessionCommandGroup
 import androidx.media2.session.SessionToken
 import kotlinx.android.synthetic.main.activity_player.*
 
+
 class PlayerActivity : AppCompatActivity(R.layout.activity_player) {
 
     private lateinit var mediaBrowser: MediaBrowser
-    private lateinit var mediaController: MediaController
-
+    private var mediaController: MediaController? = null
+    private lateinit var adapter: FileAdapter
+    private  var songs  = mutableListOf<SongListItem>()
     private val connectionCallback = MyConnectionCallback()
 
-
-    lateinit var name: String
-    lateinit var uri: String
     lateinit var sessionToken: SessionToken
 
 
@@ -35,22 +40,13 @@ class PlayerActivity : AppCompatActivity(R.layout.activity_player) {
         mediaBrowser = MediaBrowser.Builder(this)
             .setSessionToken(sessionToken)
             .setControllerCallback(
-               Executor()
+               ContextCompat.getMainExecutor(this)
             ,connectionCallback)
             .build()
 
 
-        name = intent.getStringExtra("name")!!
-        uri = intent.getStringExtra("uri")!!
-
-        SelectedSong(this@PlayerActivity).selectedSongUrl = uri
-
-        val ids = mutableListOf<String>()
-        ids.add("1")
-        mediaController.setPlaylist(ids,MediaMetadata.Builder().
-            build())
-
-
+        adapter = FileAdapter({})
+        recyclerView.adapter = adapter
 
     }
 
@@ -64,44 +60,75 @@ class PlayerActivity : AppCompatActivity(R.layout.activity_player) {
         override fun onDisconnected(controller: MediaController) {
 
         }
+        @SuppressLint("RestrictedApi")
+        override fun onConnected(
+            controller: MediaController,
+            allowedCommands: SessionCommandGroup
+        ) {
+            super.onConnected(controller, allowedCommands)
+            if (mediaController == null) {
+                mediaController = MediaController.Builder(this@PlayerActivity)
+                    .setControllerCallback(ContextCompat.getMainExecutor(this@PlayerActivity), controllerCallback)
+                    .setSessionToken(sessionToken).build()
+
+            }
+        }
+
+        override fun onPlayerStateChanged(controller: MediaController, state: Int) {
+            super.onPlayerStateChanged(controller, state)
+            mediaController?.let {setPlayButtonsUi(it.playerState) }
+
+        }
+
+
+}
+    private val controllerCallback = object : MediaController.ControllerCallback() {
 
         override fun onConnected(
             controller: MediaController,
             allowedCommands: SessionCommandGroup
         ) {
             super.onConnected(controller, allowedCommands)
-            mediaController = MediaController.Builder(this@PlayerActivity).setSessionToken(sessionToken).build()
+
             buildTransportControls()
         }
+        override fun onPlaylistChanged(
+            controller: MediaController,
+            list: MutableList<MediaItem>?,
+            metadata: MediaMetadata?
+        ) {
+            list?.let {
+                val songlist = mutableListOf<SongListItem>()
+                for (item in it) {
+                    val songListItem = SongListItem.fromMediaItem(item)
+                    songlist.add(songListItem)
 
-        override fun onPlayerStateChanged(controller: MediaController, state: Int) {
-            super.onPlayerStateChanged(controller, state)
-            setPlayButtonsUi(mediaController.playerState)
+                }
+
+                adapter.items.clear()
+                adapter.items.addAll(songlist)
+                adapter.notifyDataSetChanged()
+            }
+
+            super.onPlaylistChanged(controller, list, metadata)
         }
 
-        override fun onCurrentMediaItemChanged(controller: MediaController, item: MediaItem?) {
-            super.onCurrentMediaItemChanged(controller, item)
-        }
-
-}
+    }
 
     fun buildTransportControls() {
-        setPlayButtonsUi(mediaController.playerState)
+        mediaController?.let {
+            setPlayButtonsUi(it.playerState)
+        }
         playButton.setOnClickListener {
-            when (mediaController.playerState) {
+            when (mediaController?.playerState) {
                 SessionPlayer.PLAYER_STATE_PLAYING -> {
-                    mediaController.pause()
+                    mediaController?.pause()
                 }
-                PlaybackStateCompat.STATE_NONE-> {
-                    mediaController.play()
+                SessionPlayer.PLAYER_STATE_IDLE,SessionPlayer.PLAYER_STATE_PAUSED-> {
+                    mediaController?.play()
                 }
             }
         }
-    }
-
-    override fun onBackPressed() {
-        startActivity(Intent(this, MainActivity::class.java))
-        finish()
     }
 
     private fun setPlayButtonsUi(state: Int) {
