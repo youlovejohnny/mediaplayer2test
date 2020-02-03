@@ -3,7 +3,6 @@ package com.megastar.firebasetest
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import android.os.Bundle
 import android.provider.MediaStore
 import android.util.Log
 import androidx.core.content.ContextCompat
@@ -11,7 +10,6 @@ import androidx.media.AudioAttributesCompat
 import androidx.media2.common.FileMediaItem
 import androidx.media2.common.MediaItem
 import androidx.media2.common.MediaMetadata
-import androidx.media2.exoplayer.external.C
 import androidx.media2.player.MediaPlayer
 import androidx.media2.session.MediaSession
 import androidx.media2.session.MediaSessionService

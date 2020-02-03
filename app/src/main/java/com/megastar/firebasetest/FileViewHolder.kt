@@ -4,8 +4,6 @@ import android.view.View
 import android.widget.TextView
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.recyclerview.widget.RecyclerView
-import com.google.firebase.storage.StorageReference
-import com.megastar.firebasetest.SongListItem
 import kotlinx.android.synthetic.main.item_file.view.*
 
 class FileViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {

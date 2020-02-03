@@ -26,7 +26,6 @@ class PlayerActivity : AppCompatActivity(R.layout.activity_player) {
     private lateinit var mediaBrowser: MediaBrowser
     private var mediaController: MediaController? = null
     private lateinit var adapter: FileAdapter
-    private  var songs  = mutableListOf<SongListItem>()
     private val connectionCallback = MyConnectionCallback()
 
     lateinit var sessionToken: SessionToken
