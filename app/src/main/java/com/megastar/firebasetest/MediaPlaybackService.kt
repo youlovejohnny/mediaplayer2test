@@ -1,5 +1,6 @@
 package com.megastar.firebasetest
 
+import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -61,6 +62,8 @@ class MediaPlaybackService : MediaSessionService() {
                 ).build()
             )
 
+            mediaPlayer.prepare()
+
             return super.onConnect(session, controller)
         }
 
@@ -76,6 +79,7 @@ class MediaPlaybackService : MediaSessionService() {
         id = Random.nextInt().toString()
         mediaSession = MediaSession.Builder(this, mediaPlayer)
             .setSessionCallback(ContextCompat.getMainExecutor(this), SessionServiceCallback())
+            .setSessionActivity(PendingIntent.getActivity(this,0,Intent(this,PlayerActivity::class.java),PendingIntent.FLAG_UPDATE_CURRENT))
             .setId(id)
             .build()
 
@@ -101,6 +105,12 @@ class MediaPlaybackService : MediaSessionService() {
                     mediaPlayer.play()
                 }
 
+                KeyEventHelper.isPrevEvent(intent) -> {
+                    mediaPlayer.pause()
+                    mediaPlayer.skipToPreviousPlaylistItem()
+                    mediaPlayer.play()
+                }
+
                 else -> {
 
                 }
@@ -118,7 +128,8 @@ class MediaPlaybackService : MediaSessionService() {
         val projection = arrayOf(
             MediaStore.Audio.AudioColumns.DATA,
             MediaStore.Audio.AudioColumns.ALBUM,
-            MediaStore.Audio.ArtistColumns.ARTIST
+            MediaStore.Audio.ArtistColumns.ARTIST,
+            MediaStore.MediaColumns.DURATION
         )
         val c = context.contentResolver.query(
             uri,
@@ -133,9 +144,10 @@ class MediaPlaybackService : MediaSessionService() {
                 val path: String = c.getString(0)
                 val album: String = c.getString(1)
                 val artist: String = c.getString(2)
+                val duration: Long = c.getLong(3)
                 val name = path.substring(path.lastIndexOf("/") + 1)
 
-                val audioModel = SongListItem(name, artist, album, path)
+                val audioModel = SongListItem(name, artist, album, path,duration)
                 if (path.endsWith("mp3"))
                     tempAudioList.add(audioModel)
             }

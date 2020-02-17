@@ -21,5 +21,18 @@ class FileAdapter(val clickAction: ((SongListItem)-> Unit)): RecyclerView.Adapte
         holder.root.setOnClickListener { clickAction.invoke(currentItem) }
     }
 
+    fun setNowPlaying(songIndex: Int) {
+        val oldNowPlayingIndex = items.indexOfFirst { it.isPlayingNow }
+        if (oldNowPlayingIndex > -1) {
+            items[oldNowPlayingIndex].isPlayingNow = false
+            notifyItemChanged(oldNowPlayingIndex)
+        }
+
+        if (songIndex > -1) {
+            items[songIndex].isPlayingNow = true
+            notifyItemChanged(songIndex)
+        }
+    }
+
     var items = mutableListOf<SongListItem>()
 }

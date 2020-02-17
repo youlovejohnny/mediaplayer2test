@@ -6,6 +6,7 @@ import android.content.Context
 import android.media.AudioManager
 import android.net.Uri
 import android.os.Bundle
+import android.os.Handler
 import android.provider.MediaStore
 import android.support.v4.media.session.PlaybackStateCompat
 import android.util.Log
@@ -50,15 +51,11 @@ class PlayerActivity : AppCompatActivity(R.layout.activity_player) {
     }
 
 
-    public override fun onResume() {
-        super.onResume()
-        volumeControlStream = AudioManager.STREAM_MUSIC
-    }
-
     inner class MyConnectionCallback : MediaBrowser.BrowserCallback() {
         override fun onDisconnected(controller: MediaController) {
 
         }
+
         @SuppressLint("RestrictedApi")
         override fun onConnected(
             controller: MediaController,
@@ -70,17 +67,29 @@ class PlayerActivity : AppCompatActivity(R.layout.activity_player) {
                     .setControllerCallback(ContextCompat.getMainExecutor(this@PlayerActivity), controllerCallback)
                     .setSessionToken(sessionToken).build()
 
+            updateSeekBar(mediaController!!)
+
             }
         }
 
         override fun onPlayerStateChanged(controller: MediaController, state: Int) {
             super.onPlayerStateChanged(controller, state)
             mediaController?.let {setPlayButtonsUi(it.playerState) }
-
+            if (mediaController?.playerState == SessionPlayer.PLAYER_STATE_PLAYING) {
+                setNowPlayingSong(mediaController!!.currentMediaItemIndex)
+                setTrackInfo(mediaController!!.currentMediaItem)
+            }
         }
 
-
 }
+
+    private fun updateSeekBar(mediaController: MediaController) {
+        Handler().postDelayed({
+            songSeekBar.progress = mediaController.currentPosition.toInt()
+            updateSeekBar(mediaController)
+        },1000)
+    }
+
     private val controllerCallback = object : MediaController.ControllerCallback() {
 
         override fun onConnected(
@@ -88,7 +97,6 @@ class PlayerActivity : AppCompatActivity(R.layout.activity_player) {
             allowedCommands: SessionCommandGroup
         ) {
             super.onConnected(controller, allowedCommands)
-
             buildTransportControls()
         }
         override fun onPlaylistChanged(
@@ -102,7 +110,7 @@ class PlayerActivity : AppCompatActivity(R.layout.activity_player) {
                     val songListItem = SongListItem.fromMediaItem(item)
                     songlist.add(songListItem)
 
-                }
+            }
 
                 adapter.items.clear()
                 adapter.items.addAll(songlist)
@@ -128,6 +136,17 @@ class PlayerActivity : AppCompatActivity(R.layout.activity_player) {
                 }
             }
         }
+
+        nextButton.setOnClickListener {
+            mediaController?.pause()
+            mediaController?.skipToNextPlaylistItem()
+            mediaController?.play()
+        }
+        prevButton.setOnClickListener {
+            mediaController?.pause()
+            mediaController?.skipToNextPlaylistItem()
+            mediaController?.play()
+        }
     }
 
     private fun setPlayButtonsUi(state: Int) {
@@ -146,4 +165,17 @@ class PlayerActivity : AppCompatActivity(R.layout.activity_player) {
         }
     }
 
+    private fun setTrackInfo(mediaItem: MediaItem?) {
+        mediaItem?.let {
+            nameTextView.text = it.getSongName()
+            songSeekBar.max = it.getDuration()?.toInt() ?: 0
+        } ?: kotlin.run {  }
+    }
+
+    private fun setNowPlayingSong(songIndex: Int) {
+        adapter.setNowPlaying(songIndex)
+    }
+
 }
+
+

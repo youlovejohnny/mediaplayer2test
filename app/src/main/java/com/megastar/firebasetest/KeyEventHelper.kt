@@ -20,6 +20,10 @@ object KeyEventHelper {
         return isEvent(intent,KeyEvent.KEYCODE_MEDIA_NEXT)
     }
 
+    fun isPrevEvent(intent: Intent): Boolean {
+        return isEvent(intent,KeyEvent.KEYCODE_MEDIA_PREVIOUS)
+    }
+
     private fun isEvent(intent: Intent, keyEvent: Int): Boolean {
         return intent.getParcelableExtra<KeyEvent>(Intent.EXTRA_KEY_EVENT)?.keyCode == KeyEvent(
             KeyEvent.ACTION_DOWN,
