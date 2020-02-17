@@ -45,7 +45,7 @@ class PlayerActivity : AppCompatActivity(R.layout.activity_player) {
             .build()
 
 
-        adapter = FileAdapter({})
+        adapter = FileAdapter(::playSong)
         recyclerView.adapter = adapter
 
     }
@@ -174,6 +174,26 @@ class PlayerActivity : AppCompatActivity(R.layout.activity_player) {
 
     private fun setNowPlayingSong(songIndex: Int) {
         adapter.setNowPlaying(songIndex)
+    }
+
+    private fun playSong(song: SongListItem) {
+        val index = adapter.items.indexOf(song)
+        if (mediaController?.currentMediaItemIndex == index) {
+            if (mediaController?.playerState == SessionPlayer.PLAYER_STATE_PLAYING) {
+                mediaController?.pause()
+            } else {
+                mediaController?.play()
+            }
+
+        } else {
+            mediaController?.skipToPlaylistItem(index)
+            mediaController?.prepare()
+            mediaController?.play()
+            setTrackInfo(mediaController?.currentMediaItem)
+        }
+
+
+
     }
 
 }

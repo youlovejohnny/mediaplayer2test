@@ -11,6 +11,7 @@ import androidx.media.AudioAttributesCompat
 import androidx.media2.common.FileMediaItem
 import androidx.media2.common.MediaItem
 import androidx.media2.common.MediaMetadata
+import androidx.media2.common.UriMediaItem
 import androidx.media2.player.MediaPlayer
 import androidx.media2.session.MediaSession
 import androidx.media2.session.MediaSessionService
@@ -44,12 +45,12 @@ class MediaPlaybackService : MediaSessionService() {
             Log.d(LOG_TAG, "onConnect with mediaSession " + mediaSession.id)
 
             val songs =
-                getAllAudioFromDevice(this@MediaPlaybackService)!!
+//                getAllAudioFromDevice(this@MediaPlaybackService)!!
+            getSongsFromNetwork()
 
-
-            val mediaItemList = mutableListOf<FileMediaItem>()
+            val mediaItemList = mutableListOf<UriMediaItem>()
             for (song in songs) {
-                mediaItemList.add(song.toMediaItem())
+                mediaItemList.add(song.toUriMediaItem())
             }
 
             mediaPlayer.setAudioAttributes(AudioAttributesCompat.Builder().setContentType(AudioAttributesCompat.CONTENT_TYPE_MUSIC).
@@ -154,5 +155,15 @@ class MediaPlaybackService : MediaSessionService() {
             c.close()
         }
         return tempAudioList
+    }
+
+    private fun getSongsFromNetwork(): MutableList<SongListItem> {
+        val audioList = mutableListOf<SongListItem>()
+        audioList.add(
+            SongListItem("25:01 - ПОКОЙ","25:01",null,
+            "https://cs4-8v4.vkuseraudio.net/p10/12de916cd81cf3.mp3?extra=Y6GgmLnYN2JZ76vre5BtT2YeE29S82ztDbp53Lwr58lWFApLQccSuE-jYM_RVP5p5C1_xZ1mvZbWSrmz0U95aIPL8_gok07RSFi7goyJLzHcam82qMEK1HFRfF6ta0g087Ak854gBU6fH0v-n-LU",
+                0,false)
+        )
+        return audioList
     }
 }

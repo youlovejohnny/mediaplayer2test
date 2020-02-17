@@ -1,10 +1,12 @@
 package com.megastar.firebasetest
 
+import android.net.Uri
 import android.os.ParcelFileDescriptor
 import android.os.ParcelFileDescriptor.MODE_READ_ONLY
 import androidx.media2.common.FileMediaItem
 import androidx.media2.common.MediaItem
 import androidx.media2.common.MediaMetadata
+import androidx.media2.common.UriMediaItem
 import java.io.File
 import java.time.Duration
 
@@ -33,7 +35,7 @@ data class SongListItem(
 
     }
 
-    fun toMediaItem(): FileMediaItem {
+    fun toFileMediaItem(): FileMediaItem {
         return FileMediaItem.Builder(ParcelFileDescriptor.open(File(path),MODE_READ_ONLY)).setMetadata(
             MediaMetadata.Builder()
                 .putText(MediaMetadata.METADATA_KEY_MEDIA_ID,java.util.Random().nextInt().toString())
@@ -44,6 +46,20 @@ data class SongListItem(
                 .putLong(MediaMetadata.METADATA_KEY_DURATION, duration)
         .build()).build()
 
+    }
+
+    fun toUriMediaItem(): UriMediaItem {
+        return UriMediaItem.Builder(Uri.parse(path))
+            .setMetadata(
+            MediaMetadata.Builder()
+                .putText(MediaMetadata.METADATA_KEY_MEDIA_ID,java.util.Random().nextInt().toString())
+                .putText(MediaMetadata.METADATA_KEY_DISPLAY_TITLE,name)
+                .putText(MediaMetadata.METADATA_KEY_ARTIST, artist)
+                .putText(MediaMetadata.METADATA_KEY_ALBUM,album)
+                .putText(MediaMetadata.METADATA_KEY_MEDIA_URI, path)
+                .putLong(MediaMetadata.METADATA_KEY_DURATION, duration)
+                .build())
+            .build()
     }
 
 }
