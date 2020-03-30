@@ -16,7 +16,7 @@
         android:theme="@style/AppTheme"
         android:requestLegacyExternalStorage="true"
         tools:ignore="GoogleAppIndexingWarning">
-        <activity android:name=".PlayerActivity">
+        <activity android:name=".NewPlayerActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -33,6 +33,13 @@
         <receiver android:name="androidx.media.session.MediaButtonReceiver" >
             <intent-filter>
                 <action android:name="android.intent.action.MEDIA_BUTTON" />
+                <action android:name="com.megastar.firebasetest.SET_PLAYLIST" />
+            </intent-filter>
+        </receiver>
+
+        <receiver android:name=".MediaPlaybackService$ServiceBroadcastReceiver">
+            <intent-filter>
+                <action android:name="media.player.set.playlist"/>
             </intent-filter>
         </receiver>
     </application>

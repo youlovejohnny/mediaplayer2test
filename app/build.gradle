@@ -36,7 +36,11 @@ dependencies {
     implementation 'androidx.recyclerview:recyclerview:1.1.0'
 
     implementation 'androidx.media:media:1.1.0'
-    implementation "androidx.media2:media2-session:1.0.2"
-    implementation "androidx.media2:media2-player:1.0.2"
+    implementation "androidx.media2:media2-session:1.0.3"
+    implementation "androidx.media2:media2-player:1.0.3"
+    implementation 'com.google.code.gson:gson:2.8.6'
+    // Kotlin
+    implementation "androidx.navigation:navigation-fragment-ktx:2.3.0-alpha03"
+    implementation "androidx.navigation:navigation-ui-ktx:2.3.0-alpha03"
 
 }

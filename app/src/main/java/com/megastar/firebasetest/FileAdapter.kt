@@ -4,7 +4,8 @@ import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 
-class FileAdapter(val clickAction: ((SongListItem)-> Unit)): RecyclerView.Adapter<FileViewHolder>() {
+class FileAdapter(private val clickAction: ((SongListItem, ArrayList<SongListItem>) -> Unit)) :
+    RecyclerView.Adapter<FileViewHolder>() {
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): FileViewHolder {
         return FileViewHolder(
             LayoutInflater.from(parent.context).inflate(R.layout.item_file, parent, false)
@@ -18,7 +19,7 @@ class FileAdapter(val clickAction: ((SongListItem)-> Unit)): RecyclerView.Adapte
     override fun onBindViewHolder(holder: FileViewHolder, position: Int) {
         val currentItem = items[position]
         holder.bind(currentItem)
-        holder.root.setOnClickListener { clickAction.invoke(currentItem) }
+        holder.root.setOnClickListener { clickAction.invoke(currentItem, items) }
     }
 
     fun setNowPlaying(songIndex: Int) {
@@ -34,5 +35,5 @@ class FileAdapter(val clickAction: ((SongListItem)-> Unit)): RecyclerView.Adapte
         }
     }
 
-    var items = mutableListOf<SongListItem>()
+    var items = ArrayList<SongListItem>()
 }

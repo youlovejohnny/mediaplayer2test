@@ -1,70 +1,66 @@
 package com.megastar.firebasetest
 
 import android.app.PendingIntent
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
-import android.provider.MediaStore
+import android.content.IntentFilter
+import android.os.Binder
+import android.os.IBinder
 import android.util.Log
 import androidx.core.content.ContextCompat
 import androidx.media.AudioAttributesCompat
 import androidx.media2.common.FileMediaItem
 import androidx.media2.common.MediaItem
 import androidx.media2.common.MediaMetadata
-import androidx.media2.common.UriMediaItem
 import androidx.media2.player.MediaPlayer
+import androidx.media2.player.MediaPlayer2
+import androidx.media2.session.MediaLibraryService
 import androidx.media2.session.MediaSession
 import androidx.media2.session.MediaSessionService
 import androidx.media2.session.SessionCommandGroup
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import kotlin.random.Random
 
 
-class MediaPlaybackService : MediaSessionService() {
+class MediaPlaybackService : MediaLibraryService() {
+
+    companion object {
+        const val SET_PLAYLIST_INTENT = "media.player.set.playlist"
+    }
 
     private val LOG_TAG = "MediaPlaybackService"
     private lateinit var mediaPlayer: MediaPlayer
-    private lateinit var mediaSession: MediaSession
+    private lateinit var mediaSession: MediaLibrarySession
     private lateinit var controllerInfo: MediaSession.ControllerInfo
-    private var id = ""
+    private var sessionId = ""
+    private var broadcastReceiver: ServiceBroadcastReceiver? = null
+    private val currentPlayList = ArrayList<SongListItem>()
+
+    private val intentFilter = IntentFilter(SET_PLAYLIST_INTENT)
 
     override fun onCreate() {
         super.onCreate()
         createPlayer()
+        broadcastReceiver = ServiceBroadcastReceiver()
+        registerReceiver(broadcastReceiver,intentFilter)
     }
 
-    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? {
+    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? {
         this.controllerInfo = controllerInfo
-        return mediaSession
+        val session = createMediaSession()
+        sessionId = session.id
+        return session
     }
 
-    inner class SessionServiceCallback : MediaSession.SessionCallback() {
+
+    inner class SessionServiceCallback : MediaLibrarySession.MediaLibrarySessionCallback() {
         override fun onConnect(
             session: MediaSession,
             controller: MediaSession.ControllerInfo
         ): SessionCommandGroup? {
-            Log.d(LOG_TAG, "onConnect with mediaSession " + mediaSession.id)
-
-            val songs =
-//                getAllAudioFromDevice(this@MediaPlaybackService)!!
-            getSongsFromNetwork()
-
-            val mediaItemList = mutableListOf<UriMediaItem>()
-            for (song in songs) {
-                mediaItemList.add(song.toUriMediaItem())
-            }
-
-            mediaPlayer.setAudioAttributes(AudioAttributesCompat.Builder().setContentType(AudioAttributesCompat.CONTENT_TYPE_MUSIC).
-                setUsage(AudioAttributesCompat.USAGE_MEDIA).build())
-            mediaPlayer.setPlaylist(
-                mediaItemList as List<MediaItem>,
-                MediaMetadata.Builder().putText(
-                    MediaMetadata.METADATA_KEY_DISPLAY_TITLE,
-                    "Супер плейлист"
-                ).build()
-            )
-
-            mediaPlayer.prepare()
-
+            sessionId = mediaSession.id
             return super.onConnect(session, controller)
         }
 
@@ -72,24 +68,38 @@ class MediaPlaybackService : MediaSessionService() {
 
     private fun createPlayer() {
         mediaPlayer = MediaPlayer(this)
-        createMediaSession()
+        mediaPlayer.setAudioAttributes(
+            AudioAttributesCompat.Builder().setContentType(AudioAttributesCompat.CONTENT_TYPE_MUSIC).setUsage(
+                AudioAttributesCompat.USAGE_MEDIA
+            ).build()
+        )
     }
 
 
-    private fun createMediaSession() {
-        id = Random.nextInt().toString()
-        mediaSession = MediaSession.Builder(this, mediaPlayer)
-            .setSessionCallback(ContextCompat.getMainExecutor(this), SessionServiceCallback())
-            .setSessionActivity(PendingIntent.getActivity(this,0,Intent(this,PlayerActivity::class.java),PendingIntent.FLAG_UPDATE_CURRENT))
-            .setId(id)
+    private fun createMediaSession(): MediaLibrarySession {
+        mediaSession = MediaLibrarySession.Builder(this,
+            mediaPlayer,
+            ContextCompat.getMainExecutor(this),
+            SessionServiceCallback()
+        ).setSessionActivity(
+            PendingIntent.getActivity(
+                this,
+                0,
+                Intent(this, NewPlayerActivity::class.java),
+                PendingIntent.FLAG_UPDATE_CURRENT
+            )
+        )
+            .setId("5651651")
             .build()
 
+        return mediaSession
     }
 
 
-
+    override fun onBind(intent: Intent): IBinder? {
+        return super.onBind(intent)
+    }
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-
         intent?.let {
             when {
                 KeyEventHelper.isPlayEvent(intent) -> {
@@ -118,52 +128,41 @@ class MediaPlaybackService : MediaSessionService() {
             }
         }
 
-
         return super.onStartCommand(intent, flags, startId)
     }
 
+    inner class ServiceBroadcastReceiver: BroadcastReceiver(){
 
-    private fun getAllAudioFromDevice(context: Context): MutableList<SongListItem>? {
-        val tempAudioList: MutableList<SongListItem> = ArrayList()
-        val uri: Uri = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
-        val projection = arrayOf(
-            MediaStore.Audio.AudioColumns.DATA,
-            MediaStore.Audio.AudioColumns.ALBUM,
-            MediaStore.Audio.ArtistColumns.ARTIST,
-            MediaStore.MediaColumns.DURATION
-        )
-        val c = context.contentResolver.query(
-            uri,
-            projection,
-            null,
-            null,
-            null
-        )
+        override fun onReceive(p0: Context?, p1: Intent?) {
 
-        if (c != null) {
-            while (c.moveToNext()) {
-                val path: String = c.getString(0)
-                val album: String = c.getString(1)
-                val artist: String = c.getString(2)
-                val duration: Long = c.getLong(3)
-                val name = path.substring(path.lastIndexOf("/") + 1)
+            val string = p1?.getStringExtra("set.playlist")
+            val playList = Gson().fromJson<ArrayList<SongListItem>>(string, object : TypeToken<ArrayList<SongListItem>>() {}.type)
 
-                val audioModel = SongListItem(name, artist, album, path,duration)
-                if (path.endsWith("mp3"))
-                    tempAudioList.add(audioModel)
+            val mediaItemList = mutableListOf<FileMediaItem>()
+            for (song in playList) {
+                mediaItemList.add(song.toFileMediaItem()!!)
             }
-            c.close()
+
+            if (!PlaylistHelper.isEqual(currentPlayList,playList)) {
+                mediaPlayer.setPlaylist(
+                    mediaItemList as List<MediaItem>,
+                    MediaMetadata.Builder().putText(
+                        MediaMetadata.METADATA_KEY_DISPLAY_TITLE,
+                        "Супер плейлист"
+                    ).build()
+                )
+                mediaPlayer.prepare()
+                currentPlayList.clear()
+                currentPlayList.addAll(playList)
+            } else {
+
+            }
         }
-        return tempAudioList
+
     }
 
-    private fun getSongsFromNetwork(): MutableList<SongListItem> {
-        val audioList = mutableListOf<SongListItem>()
-        audioList.add(
-            SongListItem("25:01 - ПОКОЙ","25:01",null,
-            "https://cs4-8v4.vkuseraudio.net/p10/12de916cd81cf3.mp3?extra=Y6GgmLnYN2JZ76vre5BtT2YeE29S82ztDbp53Lwr58lWFApLQccSuE-jYM_RVP5p5C1_xZ1mvZbWSrmz0U95aIPL8_gok07RSFi7goyJLzHcam82qMEK1HFRfF6ta0g087Ak854gBU6fH0v-n-LU",
-                0,false)
-        )
-        return audioList
+    override fun onDestroy() {
+        mediaPlayer.close()
+        super.onDestroy()
     }
 }
